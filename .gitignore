@@ -22,6 +22,8 @@ __pycache__/
 *.pyc
 *.so
 *.dll
+*.dylib
+/build/
 
 # Windows
 Thumbs.db
