@@ -1,9 +1,65 @@
-# PyNifly
+# PyNifly-Mac
+
+A macOS port of [PyNifly](https://github.com/BadDogSkyrim/PyNifly), Bad Dog's Blender add-on for importing and exporting Bethesda nif files. Upstream ships its core as a Windows DLL. This fork compiles the same C++ as a native dylib and patches the few Windows-only calls in the Python.
+
+## "Works on My Machine" Disclaimer
+
+Tested on one Apple Silicon Mac (macOS 26.6, Blender 5.1.1) importing Skyrim SE meshes: heads, hair, eyes, brows and ears, including RaceMenu `BSDynamicTriShape` exports. Export, Fallout 4, Starfield, collisions and animations have **not** been tested. If something breaks, try it on Windows before reporting it upstream; if it works there, it's mine.
+
+## What's different from upstream
+
+| File | Change |
+| --- | --- |
+| `NiflyDLL/macos/` | CMake build for `libNiflyDLL.dylib`. Compiles the same wrapper sources as `NiflyDLL.vcxproj` against [BadDogSkyrim/nifly](https://github.com/BadDogSkyrim/nifly), pinned by commit. No C++ is edited: `compat/windows.h` maps the one Win32 call (`GetModuleFileNameA`, used to find `skeletons/`) onto `dladdr`. |
+| `io_scene_nifly/pyn/niflydll.py` | Loads `libNiflyDLL.dylib` on macOS, `NiflyDLL.dll` everywhere else. |
+| `io_scene_nifly/gamefinder.py` | `winreg` is optional. With no registry, game autodetect finds nothing instead of crashing. |
+| `io_scene_nifly/blender_defs.py` | `GetShortPathNameW` is only bound on Windows; elsewhere the long path is used as-is. |
+| `io_scene_nifly/pyn/niflytools.py` | Texture paths in nifs use backslashes. They're normalized before lookup so `textures\foo\bar.dds` resolves on a POSIX filesystem. No effect on Windows. |
+
+The `macos` branch carries these on top of upstream `main`. `main` is left as a mirror of upstream.
+
+## Install
+
+Build the add-on zip (below), then in Blender: Edit > Preferences > Add-ons > Install from Disk, pick the zip, and tick **NIF format (PyNifly)**.
+
+## Build
+
+Needs the Xcode command line tools and CMake 3.24+.
+
+```bash
+git clone -b macos https://github.com/mojibake-dev/PyNifly-Mac
+cd PyNifly-Mac
+cmake -S NiflyDLL/macos -B build
+cmake --build build --target addon
+# -> build/io_scene_nifly-<version>-macos-<arch>.zip
+```
+
+Builds for the host architecture. Pass `-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"` for a universal binary.
+
+## macOS Notes
+
+- **Textures.** Upstream finds the game's `Data` folder through the Windows registry. On a Mac, point **Skyrim Texture Path 1** (add-on preferences) at an extracted `Data` folder instead. Textures that sit next to the nif's `meshes` folder are found without any setup.
+- **Case.** PyNifly lowercases texture paths before looking them up. That works on the default case-insensitive APFS volume and fails on a case-sensitive one.
+
+## Keeping up with upstream
+
+```bash
+git fetch upstream
+git switch main && git merge --ff-only upstream/main && git push
+git switch macos && git rebase main && git push --force-with-lease
+```
+
+If upstream changes `NiflyDLL/`, or the nifly fork moves, bump `GIT_TAG` in `NiflyDLL/macos/CMakeLists.txt` to the nifly commit upstream builds against.
+
+---
+
+## Upstream README
+
 Export/Import tools between Blender and the Nif format, using Bodyslide/Outfit Studio's Nifly layer. Works with official Blender versions 4.0 and later; animation import and export require Blender 4.4 or later. Can handle nifs for Skyrim LE, Skyrim SE, and Fallout 4. Limited support for Fallout 76, Fallout New Vegas, and Fallout 3. Experimental support for Starfield.
 
-Windows only.
+Windows only upstream; this fork adds macOS.
 
-Full documentation in the wiki.
+Full documentation in the [wiki](https://github.com/BadDogSkyrim/PyNifly/wiki).
 
 **Features**
 
@@ -57,3 +113,7 @@ _Contributions to the tool_
 - Reddraconi
 - ShroomTip
 - ZenithVal
+
+_macOS port_
+
+- macOS port and modifications by Samara Eli, 2026-11-19. Based on upstream `main` at `e1caf11`; changes are listed under "What's different from upstream" above. Licensed GPL-3.0 like the original.
