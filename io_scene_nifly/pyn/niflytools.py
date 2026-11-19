@@ -152,7 +152,8 @@ def find_referenced_file(filepath:str, nifpath:str, root='textures', alt_suffix=
     Look for both the dds and png extension.
     Return the path if found, else None.
     """
-    fp = Path(filepath.lower())
+    # Nif paths use backslashes; only WindowsPath reads them as separators.
+    fp = Path(filepath.replace('\\', '/').lower())
 
     # If relative, must start with `root` ("textures" or "materials"). If the
     # path contains `root` as a non-leading component (e.g. "Data/materials/...")

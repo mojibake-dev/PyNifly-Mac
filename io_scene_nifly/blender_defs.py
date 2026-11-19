@@ -17,10 +17,13 @@ from .pyn.niflydll import pynifly_dev_path, pynifly_addon_path
 from .pyn.pynifly import NiTransformData, NiShape, TransformBuf, MATRIX3
 
 import ctypes
-from ctypes import wintypes
-_GetShortPathNameW = ctypes.windll.kernel32.GetShortPathNameW
-_GetShortPathNameW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR, wintypes.DWORD]
-_GetShortPathNameW.restype = wintypes.DWORD
+if hasattr(ctypes, "windll"):
+    from ctypes import wintypes
+    _GetShortPathNameW = ctypes.windll.kernel32.GetShortPathNameW
+    _GetShortPathNameW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR, wintypes.DWORD]
+    _GetShortPathNameW.restype = wintypes.DWORD
+else:  # 8.3 short names are a Windows thing; elsewhere the long path is the path
+    _GetShortPathNameW = None
 
 
 if pynifly_dev_path:
@@ -620,6 +623,8 @@ def get_short_path_name(long_name):
     """
     pname = os.path.dirname(long_name)
     bname = os.path.basename(long_name).replace(' ', '_')
+    if _GetShortPathNameW is None:
+        return os.path.join(pname, bname)
     output_buf_size = len(long_name)
     while True:
         output_buf = ctypes.create_unicode_buffer(output_buf_size)

@@ -46,7 +46,8 @@ else:
     # Load from install location
     if pynifly_addon_path not in sys.path:
         sys.path.append(pynifly_addon_path)
-    nifly_path = os.path.join(pynifly_addon_path, "NiflyDLL.dll")
+    nifly_path = os.path.join(pynifly_addon_path,
+                              "libNiflyDLL.dylib" if sys.platform == "darwin" else "NiflyDLL.dll")
 
 # Load and configure the library
 nifly = cdll.LoadLibrary(nifly_path)
