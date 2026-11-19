@@ -26,4 +26,4 @@ mylog.setLevel(logging.DEBUG)
 # ############## TESTS TO RUN #############
 # Runs everything in anim_tests.ALL_TESTS. To work on a single test, pass it:
 #   execute(testlist=[TEST_FO4_ANIM_ROUNDTRIP], stop_on_fail=True)
-execute(stop_on_fail=False)
+sys.exit(1 if execute(stop_on_fail=False) else 0)

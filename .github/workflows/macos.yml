@@ -1,0 +1,51 @@
+# The macOS add-on, start to finish. Every push to `macos` builds the dylib and add-on zip,
+# runs the tests that pass on macOS, and keeps the zip as a run artifact. A tag named
+# v<addon version>-macos.<n> does the same, then publishes the zip as a GitHub release.
+name: macOS
+
+on:
+  push:
+    branches: [macos]
+    tags: ['v*-macos*']
+  workflow_dispatch:
+
+jobs:
+  addon:
+    runs-on: macos-latest             # Apple Silicon, the only Mac Blender 5 ships for
+    permissions:
+      contents: write                 # gh release create
+    defaults:
+      run:
+        working-directory: PyNifly
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: PyNifly               # the test harness looks for $PYNIFLY_DEV_ROOT/PyNifly
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'      # Blender 5.1's interpreter
+      - run: python -m pip install numpy   # Blender bundles it; some tests import it
+
+      - name: Build
+        run: |
+          cmake -S NiflyDLL/macos -B build
+          cmake --build build --target addon -j
+
+      - name: Test
+        env:
+          PYNIFLY_DEV_ROOT: ${{ github.workspace }}
+        run: |
+          mkdir -p tests/tests/Out
+          python pynifly_test_runner.py $(grep -v '^#' NiflyDLL/macos/passing-tests.txt)
+          python anim_test_runner.py
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: io_scene_nifly-macos
+          path: PyNifly/build/io_scene_nifly-*.zip
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/io_scene_nifly-*.zip --generate-notes

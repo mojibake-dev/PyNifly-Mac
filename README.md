@@ -10,7 +10,9 @@ Tested on one Apple Silicon Mac (macOS 26.6, Blender 5.1.1) importing Skyrim SE 
 
 | File | Change |
 | --- | --- |
-| `NiflyDLL/macos/` | CMake build for `libNiflyDLL.dylib`. Compiles the same wrapper sources as `NiflyDLL.vcxproj` against [BadDogSkyrim/nifly](https://github.com/BadDogSkyrim/nifly), pinned by commit, and copies `skeletons/` next to the library the way the vcxproj does. No C++ is edited: `compat/windows.h` maps the one Win32 call (`GetModuleFileNameA`, used to find `skeletons/`) onto `dladdr`. |
+| `NiflyDLL/macos/` | CMake build for `libNiflyDLL.dylib`. Compiles the same wrapper sources as `NiflyDLL.vcxproj` against [BadDogSkyrim/nifly](https://github.com/BadDogSkyrim/nifly), pinned by commit, targets macOS 11.2 (Blender's own minimum), and copies `skeletons/` next to the library the way the vcxproj does. No C++ is edited: `compat/windows.h` maps the one Win32 call (`GetModuleFileNameA`, used to find `skeletons/`) onto `dladdr`. `passing-tests.txt` lists the standalone tests that pass on macOS. |
+| `.github/workflows/macos.yml` | Builds, tests and releases the add-on on a macOS runner. See [CI and releases](#ci-and-releases). |
+| `anim_test_runner.py` | Exits 1 when a test fails, as `pynifly_test_runner.py` already does, so CI can gate on it. |
 | `io_scene_nifly/pyn/niflydll.py` | Loads `libNiflyDLL.dylib` on macOS, `NiflyDLL.dll` everywhere else. Dev mode (`PYNIFLY_DEV_ROOT`) loads `build/libNiflyDLL.dylib` and builds its paths with `os.path.join`. |
 | `io_scene_nifly/gamefinder.py` | `winreg` is optional. With no registry, game autodetect finds nothing instead of crashing. |
 | `io_scene_nifly/blender_defs.py` | `GetShortPathNameW` is only bound on Windows; elsewhere the long path is used as-is. |
@@ -23,7 +25,9 @@ It also carries one fix that isn't about macOS, offered upstream on the `facegen
 
 ## Install
 
-Build the add-on zip (below), then in Blender: Edit > Preferences > Add-ons > Install from Disk, pick the zip, and tick **NIF format (PyNifly)**.
+Download `io_scene_nifly-<version>-macos-arm64.zip` from [Releases](https://github.com/mojibake-dev/PyNifly-Mac/releases), or build it (below). Then in Blender: Edit > Preferences > Add-ons > Install from Disk, pick the zip, and tick **NIF format (PyNifly)**.
+
+Apple Silicon only, macOS 11.2 or later: the same floor as Blender 5, which no longer ships for Intel Macs.
 
 ## Build
 
@@ -56,6 +60,28 @@ PYNIFLY_DEV_ROOT=~/pyn-dev /Applications/Blender.app/Contents/MacOS/Blender --ba
 ```
 
 Tests that read vanilla game textures (`SKYRIM_ASSETS`, `FO4_ASSETS` in `tests/test_tools.py`) fail on log warnings unless those point at extracted game data. Exports land in `tests/tests/Out/`, which has to exist.
+
+The standalone suites (no Blender) run on any Python 3.13 with numpy; Blender's bundled one works. Call the runners through the dev-root link, since `anim_test_runner.py` finds the dev root from its own path:
+
+```bash
+PY=/Applications/Blender.app/Contents/Resources/5.1/python/bin/python3.13
+PYNIFLY_DEV_ROOT=~/pyn-dev $PY ~/pyn-dev/PyNifly/pynifly_test_runner.py $(grep -v '^#' NiflyDLL/macos/passing-tests.txt)
+$PY ~/pyn-dev/PyNifly/anim_test_runner.py
+```
+
+`passing-tests.txt` holds the 104 of 222 standalone tests that pass on macOS. The rest want Windows-style fixture paths, asset folders under `C:/Modding`, or BadDog's `esplib`. All 32 animation tests pass.
+
+## CI and releases
+
+`.github/workflows/macos.yml` runs on every push to `macos`. It builds the dylib and add-on zip on an Apple Silicon runner, runs the standalone suites as above, and keeps the zip as a run artifact in the Actions tab. A rebase onto upstream that breaks the Mac build fails there.
+
+To release, tag the commit `v<add-on version>-macos.<n>` and push the tag. The same job builds and tests that commit, then publishes the zip:
+
+```bash
+git tag v30.2.0-macos.1 && git push origin v30.2.0-macos.1
+```
+
+The Blender suite isn't run in CI. It needs Blender and game assets on the runner.
 
 ## Keeping up with upstream
 

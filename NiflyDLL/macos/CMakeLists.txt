@@ -4,6 +4,9 @@
 #   cmake --build build --target addon     # -> build/io_scene_nifly-<version>-macos-<arch>.zip
 #
 cmake_minimum_required(VERSION 3.24)
+# Blender 5.1's own floor (its LSMinimumSystemVersion). Left unset, the dylib targets whatever
+# macOS built it and may link libc++ symbols that older systems don't have.
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.2 CACHE STRING "Minimum macOS")
 project(NiflyDLL_macos LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
