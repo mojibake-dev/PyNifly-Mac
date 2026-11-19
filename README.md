@@ -10,13 +10,16 @@ Tested on one Apple Silicon Mac (macOS 26.6, Blender 5.1.1) importing Skyrim SE 
 
 | File | Change |
 | --- | --- |
-| `NiflyDLL/macos/` | CMake build for `libNiflyDLL.dylib`. Compiles the same wrapper sources as `NiflyDLL.vcxproj` against [BadDogSkyrim/nifly](https://github.com/BadDogSkyrim/nifly), pinned by commit. No C++ is edited: `compat/windows.h` maps the one Win32 call (`GetModuleFileNameA`, used to find `skeletons/`) onto `dladdr`. |
-| `io_scene_nifly/pyn/niflydll.py` | Loads `libNiflyDLL.dylib` on macOS, `NiflyDLL.dll` everywhere else. |
+| `NiflyDLL/macos/` | CMake build for `libNiflyDLL.dylib`. Compiles the same wrapper sources as `NiflyDLL.vcxproj` against [BadDogSkyrim/nifly](https://github.com/BadDogSkyrim/nifly), pinned by commit, and copies `skeletons/` next to the library the way the vcxproj does. No C++ is edited: `compat/windows.h` maps the one Win32 call (`GetModuleFileNameA`, used to find `skeletons/`) onto `dladdr`. |
+| `io_scene_nifly/pyn/niflydll.py` | Loads `libNiflyDLL.dylib` on macOS, `NiflyDLL.dll` everywhere else. Dev mode (`PYNIFLY_DEV_ROOT`) loads `build/libNiflyDLL.dylib` and builds its paths with `os.path.join`. |
 | `io_scene_nifly/gamefinder.py` | `winreg` is optional. With no registry, game autodetect finds nothing instead of crashing. |
 | `io_scene_nifly/blender_defs.py` | `GetShortPathNameW` is only bound on Windows; elsewhere the long path is used as-is. |
 | `io_scene_nifly/pyn/niflytools.py` | Texture paths in nifs use backslashes. They're normalized before lookup so `textures\foo\bar.dds` resolves on a POSIX filesystem. No effect on Windows. |
+| `tests/test_tools_bpy.py` | Tests spell fixture paths Windows-style; `test_file` normalizes them so the suite finds its files on a Mac. |
 
 The `macos` branch carries these on top of upstream `main`. `main` is left as a mirror of upstream.
+
+It also carries one fix that isn't about macOS, offered upstream on the `facegen-placeholder-bones` branch: RaceMenu's CharGen export (`SKSE/Plugins/CharGen/*.nif`) parks the facegen bone NiNodes at the origin, which made PyNifly tear the head and hair on import. Placeholder bones now take their reference skeleton position. Test: `TEST_FACEGEN_PLACEHOLDER_BONES`.
 
 ## Install
 
@@ -40,6 +43,19 @@ Builds for the host architecture. Pass `-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
 - **Textures.** Upstream finds the game's `Data` folder through the Windows registry. On a Mac, point **Skyrim Texture Path 1** (add-on preferences) at an extracted `Data` folder instead. Textures that sit next to the nif's `meshes` folder are found without any setup.
 - **Case.** PyNifly lowercases texture paths before looking them up. That works on the default case-insensitive APFS volume and fails on a case-sensitive one.
+
+## Running the tests
+
+Upstream's harness expects `PYNIFLY_DEV_ROOT` to be a folder holding the checkout as `PyNifly`, and Blender's add-on folder to link back to the checkout's `io_scene_nifly`:
+
+```bash
+cmake --build build                      # dev mode loads build/libNiflyDLL.dylib
+mkdir -p ~/pyn-dev && ln -s "$PWD" ~/pyn-dev/PyNifly
+ln -s "$PWD/io_scene_nifly" ~/Library/Application\ Support/Blender/5.1/scripts/addons/io_scene_nifly
+PYNIFLY_DEV_ROOT=~/pyn-dev /Applications/Blender.app/Contents/MacOS/Blender --background --python test_runner.py
+```
+
+Tests that read vanilla game textures (`SKYRIM_ASSETS`, `FO4_ASSETS` in `tests/test_tools.py`) fail on log warnings unless those point at extracted game data. Exports land in `tests/tests/Out/`, which has to exist.
 
 ## Keeping up with upstream
 
