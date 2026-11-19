@@ -35,6 +35,12 @@ target_compile_definitions(NiflyDLL PRIVATE NIFLYDLL_EXPORTS)
 target_compile_options(NiflyDLL PRIVATE -fdeclspec -w)  # __declspec(dllexport) parses; symbols export by default
 target_link_libraries(NiflyDLL PRIVATE nifly)
 
+# Like the vcxproj, keep skeletons/ next to the library: NiflyDLL's FindProjectRoot and
+# NifFile.reference_skel both look there, so a dev run (PYNIFLY_DEV_ROOT) needs them in build/.
+add_custom_command(TARGET NiflyDLL POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${PYNIFLY_ROOT}/io_scene_nifly/skeletons $<TARGET_FILE_DIR:NiflyDLL>/skeletons)
+
 # Installable add-on zip: the upstream add-on folder with the dylib dropped in.
 file(STRINGS "${PYNIFLY_ROOT}/io_scene_nifly/__init__.py" _ver REGEX "\"version\": *\\(")
 string(REGEX MATCH "([0-9]+), *([0-9]+), *([0-9]+)" _ "${_ver}")
