@@ -26,12 +26,15 @@ def _interactive_blender():
 if 'PYNIFLY_DEV_ROOT' in os.environ:
     pynifly_addon_path = os.path.dirname(os.path.realpath(__file__))
     pynifly_dev_root = os.environ['PYNIFLY_DEV_ROOT']
-    pynifly_dev_path = os.path.join(pynifly_dev_root, r"pynifly\io_scene_nifly")
-    nifly_path = os.path.join(pynifly_dev_root, r"PyNifly\NiflyDLL\x64\Debug\NiflyDLL.dll")
+    pynifly_dev_path = os.path.join(pynifly_dev_root, "pynifly", "io_scene_nifly")
+    if sys.platform == "darwin":  # NiflyDLL/macos CMake output
+        nifly_path = os.path.join(pynifly_dev_root, "PyNifly", "build", "libNiflyDLL.dylib")
+    else:
+        nifly_path = os.path.join(pynifly_dev_root, "PyNifly", "NiflyDLL", "x64", "Debug", "NiflyDLL.dll")
     # An interactive Blender uses the DLL staged for it (NiflyDLL\staging), when there is one,
     # so the Debug build it would otherwise hold open stays free to rebuild. Headless Blender
     # and plain-Python test runs always use the Debug build.
-    staged = os.path.join(pynifly_dev_root, r"PyNifly\NiflyDLL\staging\NiflyDLL.dll")
+    staged = os.path.join(pynifly_dev_root, "PyNifly", "NiflyDLL", "staging", "NiflyDLL.dll")
     if _interactive_blender() and os.path.exists(staged):
         nifly_path = staged
     logging.getLogger("pynifly").setLevel(logging.DEBUG)

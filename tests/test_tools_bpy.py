@@ -210,9 +210,9 @@ def remove_file(fn):
 
 
 def test_file(filename, output=False) -> str:
-    path = Path(filename)
+    path = Path(filename.replace('\\', '/'))  # tests spell paths Windows-style
     if path.parts[0].lower() == "skeletons":
-        return str(_pynifly_dev_path / filename)
+        return str(_pynifly_dev_path / path)
     
     if len(path.parts) < 2:
         return filename
@@ -224,7 +224,7 @@ def test_file(filename, output=False) -> str:
         bpy.context.preferences.filepaths.texture_directory = PYNIFLY_TEXTURES_FO4
         _use_fixture_textures('FO4')
 
-    fullname = _pynifly_test_path / filename
+    fullname = _pynifly_test_path / path
     if path.parts[1].upper() == "OUT":
         remove_file(fullname)
 
